@@ -25,11 +25,47 @@ heap_end:
 # SEÇÃO .TEXT
 .section .text
 
+# Custom brk function
+# Input: %rdi = new program break
+# Output: %rax = 0 on success, -1 on failure
+custom_brk:
+    movq    %rdi, %rax        # Move new break address into %rax
+    movq    $12, %rdi         # brk syscall number (12)
+    syscall                   # Make syscall
+    cmpq    $-1, %rax         # Check if syscall failed
+    je      .brk_failed       # Jump if failed
+    ret                       # Return if success
+.brk_failed:
+    movq    $-1, %rax         # Return -1 on failure
+    ret
+
+# Custom sbrk function
+# Input: %rdi = increment in bytes
+# Output: %rax = previous program break on success, -1 on failure
+custom_sbrk:
+    movq    %rdi, %rdx        # Move increment into %rdx
+    movq    $12, %rdi         # brk syscall number (12)
+    movq    $0, %rsi          # Zero out %rsi
+    syscall                   # Make syscall to get current break
+    cmpq    $-1, %rax         # Check if syscall failed
+    je      .sbrk_failed      # Jump if failed
+    addq    %rdx, %rax        # Add increment to current break
+    movq    %rax, %rdi        # Move new break address into %rdi
+    movq    $12, %rax         # brk syscall number (12)
+    syscall                   # Make syscall to set new break
+    cmpq    $-1, %rax         # Check if syscall failed
+    je      .sbrk_failed      # Jump if failed
+    subq    %rdx, %rax        # Return previous break address
+    ret                       
+.sbrk_failed:
+    movq    $-1, %rax         # Return -1 on failure
+    ret
+
 setup_brk:
         pushq   %rbp
         movq    %rsp, %rbp
         movl    $0, %edi
-        call    sbrk
+        call    custom_sbrk
         movq    %rax, original_brk(%rip)
         movq    original_brk(%rip), %rax
         movq    %rax, heap_end(%rip)
@@ -41,7 +77,7 @@ dismiss_brk:
         movq    %rsp, %rbp
         movq    original_brk(%rip), %rax
         movq    %rax, %rdi
-        call    brk
+        call    custom_brk
         movq    original_brk(%rip), %rax
         movq    %rax, heap_end(%rip)
         popq    %rbp
@@ -56,7 +92,7 @@ memory_alloc:
         testq   %rax, %rax
         jne     .L4
         movl    $0, %edi
-        call    sbrk
+        call    custom_sbrk
         movq    %rax, heap_end(%rip)
 .L4:
         movq    -24(%rbp), %rax
