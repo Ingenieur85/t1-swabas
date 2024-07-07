@@ -33,7 +33,6 @@ setup_brk:
         movq    %rax, original_brk(%rip)
         movq    original_brk(%rip), %rax
         movq    %rax, heap_end(%rip)
-        nop
         popq    %rbp
         ret
 
@@ -45,7 +44,6 @@ dismiss_brk:
         call    brk
         movq    original_brk(%rip), %rax
         movq    %rax, heap_end(%rip)
-        nop
         popq    %rbp
         ret
 
@@ -205,6 +203,5 @@ split_block:
         movq    -24(%rbp), %rax
         movq    -32(%rbp), %rdx
         movq    %rdx, 8(%rax)
-        nop
         popq    %rbp
         ret
