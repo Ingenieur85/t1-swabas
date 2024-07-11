@@ -29,36 +29,37 @@ heap_end:
 # Input: %rdi = novo brk do programa
 # Output: %rax = 0 em sucesso, -1 em caso de erro
 custom_brk:
-        movq    %rdi, %rax        # Move novo brk em %rax
-        movq    $12, %rdi         # brk syscall (12)
-        syscall                   
-        cmpq    $-1, %rax         # Checa retorno do syscall
-        je      .brk_failed       
-        ret                       
+        movq    $12, %rax         # brk syscall (12)
+        syscall                   # Perform the syscall
+        cmpq    $-1, %rax         # Check return value for failure
+        je      .brk_failed       # Jump to error handling if failed
+        ret                       # Return if successful
 .brk_failed:
-        movq    $-1, %rax         # Retorna -1 se deu erro
+        movq    $-1, %rax         # Return -1 if there was an error
         ret
+
 
 # Input: %rdi = incremento em bytes
 # Output: %rax = último brk, ou -1 se erro
 custom_sbrk:
-        movq    %rdi, %rdx        # Move incremento em %rdx
-        movq    $12, %rdi         # brk syscall (12)
-        movq    $0, %rsi          # Reset %rsi
-        syscall                   
-        cmpq    $-1, %rax         # Checa retorno do syscall
-        je      .sbrk_failed      
-        addq    %rdx, %rax        # Soma incremento em brk atual
-        movq    %rax, %rdi        # Coloca novo brk em %rdi
-        movq    $12, %rax         # brk syscall (12)
-        syscall                   
-        cmpq    $-1, %rax         # Checa syscall
-        je      .sbrk_failed      
-        subq    %rdx, %rax        # Returna o último endereço de brk
-        ret                       
+    movq    %rdi, %rdx        # Move incremento em %rdx
+    movq    $12, %rax         # brk syscall (12)
+    movq    $0, %rdi          # Inicialmente, brk é setado para 0 para obter o endereço atual do heap
+    syscall                   
+    cmpq    $-1, %rax         # Checa retorno do syscall
+    je      .sbrk_failed      
+    addq    %rdx, %rax        # Soma incremento ao endereço atual do heap
+    movq    %rax, %rdi        # Coloca novo brk em %rdi
+    movq    $12, %rax         # brk syscall (12)
+    syscall                   
+    cmpq    $-1, %rax         # Checa retorno do syscall
+    je      .sbrk_failed      
+    subq    %rdx, %rax        # Retorna o último endereço de brk
+    ret                       
 .sbrk_failed:
-        movq    $-1, %rax         # Returna -1 se deu erro
-        ret
+    movq    $-1, %rax         # Retorna -1 se deu erro
+    ret
+
 
 setup_brk:
         pushq   %rbp
@@ -132,7 +133,7 @@ memory_alloc:
         movq    -24(%rbp), %rax         # Carrega o número de bytes solicitados em %rax
         addq    $16, %rax               # Adiciona o tamanho do cabeçalho ao número de bytes solicitados
         movq    %rax, %rdi              # Move o tamanho total para %rdi
-        call    sbrk                    # Chama sbrk para alocar memória
+        call    custom_sbrk                    # Chama sbrk para alocar memória
         movq    %rax, -16(%rbp)         # Armazena o ponteiro do novo bloco em uma variável local
         cmpq    $-1, -16(%rbp)          # Compara o resultado da alocação com -1
         jne     .successful_alloc        # Se a alocação foi bem-sucedida, pula para alocacao_sucesso
