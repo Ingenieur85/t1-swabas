@@ -1,4 +1,4 @@
-# Fabiano A. de Sá Filho
+
 # Software Básico - UFPR 1-2024
 
 # Declarações globais aqui, para que o main.c tenha acesso
